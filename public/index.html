@@ -6,6 +6,7 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
 const PORT = process.env.PORT || 3000;
 
 const maps = {
@@ -72,7 +73,12 @@ function broadcastState() {
     bombPlanted: state.bombPlanted,
     bombSite: state.bombSite,
     players: Object.values(state.players).map(normalizePlayer),
-    scoreboard: Object.entries(state.scoreboard).map(([id, value]) => ({ id, kills: value.kills || 0, deaths: value.deaths || 0 })),
+    scoreboard: Object.entries(state.scoreboard).map(([id, value]) => ({
+      id,
+      username: state.players[id]?.username || 'Player',
+      kills: value.kills || 0,
+      deaths: value.deaths || 0,
+    })),
   };
   io.emit('state', payload);
 }
@@ -134,6 +140,7 @@ io.on('connection', (socket) => {
 
   state.players[socket.id] = player;
   getPlayerScore(socket.id);
+
   socket.emit('init', {
     id: socket.id,
     selectedMap: state.selectedMap,
@@ -143,6 +150,7 @@ io.on('connection', (socket) => {
     bombSite: state.bombSite,
     scoreboard: state.scoreboard,
   });
+
   broadcastState();
 
   socket.on('player:update', (data) => {
@@ -184,7 +192,7 @@ io.on('connection', (socket) => {
     if (!player || !player.alive || state.bombPlanted) return;
 
     const map = maps[state.selectedMap];
-    const nearest = Object.entries(map.bombSites).find(([siteName, site]) => {
+    const nearest = Object.entries(map.bombSites).find(([_, site]) => {
       const dx = player.x - site.x;
       const dz = player.z - site.z;
       return Math.hypot(dx, dz) < 3;
@@ -253,9 +261,11 @@ setInterval(() => {
       io.emit('chat', { message: 'Round finished.' });
     }
   }
+
   broadcastState();
 }, 100);
 
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+

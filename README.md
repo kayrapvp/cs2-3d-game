@@ -29,7 +29,7 @@ const state = {
   timer: 90,
   bombPlanted: false,
   bombSite: null,
-  players: {},
+  players: [],
   scoreboard: [],
   localId: null,
   message: 'Waiting for match',
@@ -143,6 +143,7 @@ function createBot(x, z, color = 0xff5555) {
 function buildMap(mapName) {
   clearMap();
   state.mapConfig = getMapConfig(mapName);
+
   const ground = new THREE.Mesh(
     new THREE.BoxGeometry(80, 1, 80),
     new THREE.MeshStandardMaterial({ color: state.mapConfig.color, roughness: 0.95, metalness: 0.1 })
@@ -218,7 +219,7 @@ function syncHud() {
   weaponEl.textContent = gun.label;
   ammoEl.textContent = `${localPlayer.ammo.clip} / ${localPlayer.ammo.reserve}`;
   moneyEl.textContent = `$${localPlayer.money}`;
-  roundEl.textContent = `Round ${state.roundActive ? '1' : '1'}`;
+  roundEl.textContent = `Round 1`;
   timerEl.textContent = formatTime(state.timer);
   siteEl.textContent = `Site ${state.currentSite}`;
   messageEl.textContent = state.message;
@@ -238,8 +239,8 @@ function setLocalState() {
 function drawRemotePlayers() {
   const existing = new Set();
 
-  Object.values(state.players).forEach((player) => {
-    if (player.id === state.localId) return;
+  for (const player of state.players) {
+    if (player.id === state.localId) continue;
     existing.add(player.id);
 
     let group = scene.getObjectByName(`player-${player.id}`);
@@ -267,7 +268,7 @@ function drawRemotePlayers() {
     group.position.set(player.x, 0, player.z);
     group.rotation.y = player.yaw;
     group.visible = player.alive;
-  });
+  }
 
   scene.children.forEach((child) => {
     if (child.name && child.name.startsWith('player-') && !existing.has(child.name.replace('player-', ''))) {
@@ -333,8 +334,8 @@ function switchWeapon(index) {
   const names = ['deagle', 'usp', 'm4a1', 'ak47'];
   const selected = names[index - 1];
   if (selected) {
-    localPlayer.weapon = selected;
     const gun = WEAPONS[selected];
+    localPlayer.weapon = selected;
     localPlayer.ammo = { clip: gun.mag, reserve: gun.reserve };
     setMessage(`${gun.label} equipped`);
   }
@@ -349,6 +350,7 @@ function applyRecoil() {
 function fireWeapon() {
   if (!state.roundActive) return;
   const gun = WEAPONS[localPlayer.weapon] || WEAPONS.deagle;
+
   if (localPlayer.ammo.clip <= 0) {
     setMessage('Reloading...');
     localPlayer.ammo.clip = gun.mag;
@@ -364,34 +366,31 @@ function fireWeapon() {
   let hitTarget = null;
   let closestDistance = Infinity;
 
-  const candidates = [...botTargets, ...Object.values(state.players).filter((p) => p.id !== state.localId && p.alive)];
-  for (const candidate of candidates) {
-    const targetPosition = candidate.mesh ? candidate.mesh.position : new THREE.Vector3(candidate.x, candidate.y, candidate.z);
-    const toTarget = targetPosition.clone().sub(origin);
+  for (const target of botTargets) {
+    if (!target.alive) continue;
+    const targetPosition = target.mesh.position.clone();
+    const toTarget = targetPosition.sub(origin);
     const distance = toTarget.length();
     if (distance < closestDistance) {
       const projected = toTarget.normalize();
       const dot = projected.dot(direction);
       if (dot > 0.98 && distance < 50) {
         closestDistance = distance;
-        hitTarget = candidate;
+        hitTarget = target;
       }
     }
   }
 
   if (hitTarget) {
-    const target = hitTarget.mesh ? hitTarget : null;
-    if (target) {
-      target.health = Math.max(0, target.health - gun.damage);
-      if (target.health <= 0) {
-        target.alive = false;
-        target.mesh.visible = false;
-        localPlayer.kills += 1;
-        socket.emit('player:kill', hitTarget.id);
-        setMessage('Enemy eliminated');
-      } else {
-        setMessage('Target hit');
-      }
+    hitTarget.health = Math.max(0, hitTarget.health - gun.damage);
+    if (hitTarget.health <= 0) {
+      hitTarget.alive = false;
+      hitTarget.mesh.visible = false;
+      localPlayer.kills += 1;
+      socket.emit('player:kill', hitTarget.id);
+      setMessage('Enemy eliminated');
+    } else {
+      setMessage('Target hit');
     }
   } else {
     setMessage(`${gun.label} fired`);
@@ -470,6 +469,7 @@ function maybePlantBomb() {
 
 function handleInput(key, pressed) {
   keys[key] = pressed;
+
   if (pressed && (key === 'g' || key === 'f' || key === 'h')) {
     const grenadeType = key === 'g' ? 'smoke' : key === 'f' ? 'flash' : 'molotov';
     throwGrenade(grenadeType);
@@ -586,7 +586,7 @@ socket.on('chat', (data) => {
 });
 
 socket.on('state', (serverState) => {
-  state.players = serverState.players || {};
+  state.players = serverState.players || [];
   state.selectedMap = serverState.selectedMap;
   state.timer = serverState.timer;
   state.roundActive = serverState.roundActive;

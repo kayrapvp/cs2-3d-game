@@ -19,8 +19,8 @@
         </div>
 
         <div class="row small">
-          <button class="team-btn active" data-team="A">Attack A</button>
-          <button class="team-btn" data-team="B">Attack B</button>
+          <button class="team-btn active" data-team="A">Site A</button>
+          <button class="team-btn" data-team="B">Site B</button>
         </div>
 
         <ul class="controls">
@@ -30,8 +30,9 @@
           <li>Space = Jump / Bhop</li>
           <li>E = Plant Bomb</li>
           <li>Mouse = Aim</li>
-          <li>1/2/3/4 = Weapons</li>
+          <li>1 / 2 / 3 / 4 = Weapon</li>
           <li>G / F / H = Grenades</li>
+          <li>B = Buy Menu</li>
         </ul>
 
         <button id="startBtn" class="primary">Start Match</button>
