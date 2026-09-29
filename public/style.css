@@ -1,72 +1,268 @@
-<!DOCTYPE html>
-<html lang="tr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CS2 Style 3D Prototype</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <div id="menu" class="menu visible">
-      <div class="panel">
-        <h1>CS2 STYLE 3D</h1>
-        <p class="subtitle">Competitive FPS Prototype</p>
+* {
+  box-sizing: border-box;
+}
 
-        <div class="row">
-          <button class="map-btn active" data-map="dust2">Dust2</button>
-          <button class="map-btn" data-map="mirage">Mirage</button>
-          <button class="map-btn" data-map="nuke">Nuke</button>
-        </div>
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #04080d;
+  color: white;
+  font-family: Arial, Helvetica, sans-serif;
+}
 
-        <div class="row small">
-          <button class="team-btn active" data-team="A">Site A</button>
-          <button class="team-btn" data-team="B">Site B</button>
-        </div>
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
 
-        <ul class="controls">
-          <li>W A S D = Move</li>
-          <li>Shift = Sprint</li>
-          <li>Ctrl = Crouch</li>
-          <li>Space = Jump / Bhop</li>
-          <li>E = Plant Bomb</li>
-          <li>Mouse = Aim</li>
-          <li>1 / 2 / 3 / 4 = Weapon</li>
-          <li>G / F / H = Grenades</li>
-          <li>B = Buy Menu</li>
-        </ul>
+.menu {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(10, 18, 30, 0.68), rgba(3, 6, 12, 0.95));
+  z-index: 30;
+}
 
-        <button id="startBtn" class="primary">Start Match</button>
-      </div>
-    </div>
+.menu.hidden {
+  display: none;
+}
 
-    <div id="hud" class="hud hidden">
-      <div id="health" class="health">100 HP</div>
-      <div id="weapon" class="weapon">Deagle</div>
-      <div id="ammo" class="ammo">7 / 35</div>
-      <div id="money" class="money">$800</div>
-      <div id="round" class="round">Round 1</div>
-      <div id="timer" class="timer">01:30</div>
-      <div id="site" class="site">Site A</div>
-      <div id="message" class="message">Waiting for match</div>
-      <div id="crosshair" class="crosshair"></div>
+.panel {
+  width: min(620px, 92vw);
+  background: rgba(16, 20, 30, 0.94);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 20px;
+  box-shadow: 0 0 30px rgba(0,0,0,0.48);
+  padding: 30px 28px 24px;
+  text-align: center;
+}
 
-      <div id="scoreboard" class="scoreboard">
-        <div class="score-title">Scoreboard</div>
-        <div id="scoreList" class="score-list"></div>
-      </div>
+h1 {
+  margin: 0;
+  font-size: clamp(2.1rem, 4vw, 3.8rem);
+  letter-spacing: 2px;
+  color: #f2f6ff;
+}
 
-      <div id="buyMenu" class="buy-menu hidden">
-        <div class="buy-heading">Buy Menu</div>
-        <button class="buy-btn" data-weapon="deagle">Deagle - $700</button>
-        <button class="buy-btn" data-weapon="usp">USP - $200</button>
-        <button class="buy-btn" data-weapon="m4a1">M4A1 - $2700</button>
-        <button class="buy-btn" data-weapon="ak47">AK47 - $2700</button>
-        <button class="buy-btn" data-weapon="awp">AWP - $4750</button>
-      </div>
-    </div>
+.subtitle {
+  margin: 8px 0 22px;
+  color: #c2d3f7;
+  letter-spacing: 1px;
+}
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-    <script src="game.js"></script>
-  </body>
-</html>
+.row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.row.small {
+  margin-bottom: 22px;
+}
+
+button {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: white;
+  padding: 12px 18px;
+  font-size: 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+button:hover {
+  background: rgba(255,255,255,0.12);
+}
+
+button.active {
+  border-color: rgba(115, 214, 255, 0.85);
+  background: rgba(41, 110, 180, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(115, 214, 255, 0.35);
+}
+
+.primary {
+  width: 100%;
+  margin-top: 10px;
+  background: linear-gradient(135deg, #18a6ff, #245eff);
+  border: none;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.controls {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+  line-height: 1.8;
+  color: #e4ebff;
+}
+
+.hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.hud.hidden {
+  display: none;
+}
+
+.health,
+.weapon,
+.ammo,
+.money,
+.round,
+.timer,
+.site,
+.message {
+  position: absolute;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.health {
+  left: 26px;
+  bottom: 28px;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.weapon {
+  right: 26px;
+  bottom: 28px;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.ammo {
+  right: 26px;
+  bottom: 78px;
+  font-weight: 700;
+  font-size: 1.6rem;
+}
+
+.money {
+  right: 26px;
+  bottom: 128px;
+  font-weight: 700;
+}
+
+.round {
+  top: 20px;
+  left: 26px;
+  font-weight: 700;
+}
+
+.timer {
+  top: 20px;
+  right: 26px;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.site {
+  top: 70px;
+  left: 26px;
+}
+
+.message {
+  left: 50%;
+  top: 18px;
+  transform: translateX(-50%);
+  min-width: 220px;
+  text-align: center;
+}
+
+.crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translate(-50%, -50%);
+}
+
+.crosshair::before,
+.crosshair::after {
+  content: "";
+  position: absolute;
+  background: rgba(255,255,255,0.9);
+  border-radius: 2px;
+}
+
+.crosshair::before {
+  left: 10px;
+  top: 0;
+  width: 2px;
+  height: 22px;
+}
+
+.crosshair::after {
+  left: 0;
+  top: 10px;
+  width: 22px;
+  height: 2px;
+}
+
+.scoreboard {
+  position: absolute;
+  top: 120px;
+  left: 26px;
+  width: 220px;
+  background: rgba(0,0,0,0.32);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.score-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.score-list {
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.buy-menu {
+  position: absolute;
+  right: 20px;
+  top: 120px;
+  width: 200px;
+  background: rgba(0,0,0,0.36);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.buy-menu.hidden {
+  display: none;
+}
+
+.buy-heading {
+  font-weight: 700;
+  text-align: center;
+}
+
+.buy-btn {
+  width: 100%;
+  text-align: left;
+}

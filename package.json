@@ -1,65 +1,13 @@
-# CS2 Style 3D Prototype
-
-Bu proje, HTML + JavaScript + Three.js + Socket.IO kullanarak çalışan bir CS2 hissi veren 3D FPS prototipidir.
-
-## Özellikler
-
-- 3D harita ve sahne
-- Dust2 / Mirage / Nuke benzeri harita seçenekleri
-- W/A/S/D hareket
-- Shift sprint
-- Ctrl crouch
-- Space jump / bhop
-- Mouse look
-- A/B site bölgesi
-- Bomb plant mantığı
-- Silah seçimi ve buy menu
-- Grenade sistemi
-- Round timer ve HUD
-- Çok oyunculu sunucu / istemci yapısı
-
-## Kurulum
-
-1. Proje klasörüne girin
-2. Bağımlılıkları yükleyin:
-
-```bash
-npm install
-```
-
-3. Sunucuyu başlatın:
-
-```bash
-npm start
-```
-
-4. Tarayıcıda açın:
-
-```text
-http://localhost:3000
-```
-
-## Dosya Açıklamaları
-
-- `server.js`: sunucu, map ve oyuncu senkronizasyonu
-- `public/index.html`: ana menü ve oyun arayüzü
-- `public/style.css`: menü, HUD ve buton stilleri
-- `public/game.js`: 3D oyun mantığı, hareket ve silah sistemi
-- `package.json`: Node bağımlılıkları
-
-## Not
-
-Bu bir prototiptir. Gerçek bir tam CS2 klonu için aşağıdaki eklemeler gerekir:
-
-- daha gelişmiş hitbox ve recoil sistemi
-- gerçek karakter animasyonları
-- uzaktan rekabet ve daha güçlü netcode
-- buy menu detayları
-- daha sağlam voice / ses sistemi
-- çoklu odalar ve matchmaking
-- gerçekçi harita ve duvar tasarımı
-
-## Katkı
-
-Projeyi geliştirmek isterseniz yeni map, silah ve gameplay sistemleri ekleyebilirsiniz.
-
+{
+  "name": "cs2-style-3d-prototype",
+  "version": "1.0.0",
+  "description": "CS2-style 3D FPS prototype with local multiplayer server/client flow",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.8.1"
+  }
+}

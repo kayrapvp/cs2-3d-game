@@ -1,0 +1,270 @@
+const express = require('express');
+const http = require('http');
+const path = require('path');
+const { Server } = require('socket.io');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+const PORT = process.env.PORT || 3000;
+
+const maps = {
+  dust2: {
+    name: 'Dust2',
+    bombSites: { A: { x: -12, z: -12 }, B: { x: 12, z: 12 } },
+    spawn: { x: 0, z: 14 },
+    color: 0x7aa7c5,
+  },
+  mirage: {
+    name: 'Mirage',
+    bombSites: { A: { x: -14, z: -10 }, B: { x: 14, z: 10 } },
+    spawn: { x: 0, z: 16 },
+    color: 0x738d60,
+  },
+  nuke: {
+    name: 'Nuke',
+    bombSites: { A: { x: -10, z: -14 }, B: { x: 10, z: 12 } },
+    spawn: { x: 0, z: 18 },
+    color: 0x858585,
+  },
+};
+
+const state = {
+  selectedMap: 'dust2',
+  roundActive: false,
+  timer: 90,
+  bombPlanted: false,
+  bombSite: null,
+  players: {},
+  scoreboard: {},
+};
+
+function getMapData() {
+  return maps[state.selectedMap] || maps.dust2;
+}
+
+function normalizePlayer(player) {
+  return {
+    id: player.id,
+    username: player.username,
+    x: player.x,
+    y: player.y,
+    z: player.z,
+    yaw: player.yaw,
+    pitch: player.pitch,
+    health: player.health,
+    crouch: player.crouch,
+    sprint: player.sprint,
+    site: player.site,
+    alive: player.alive,
+    kills: player.kills || 0,
+    deaths: player.deaths || 0,
+    money: player.money || 800,
+    weapon: player.weapon || 'deagle',
+  };
+}
+
+function broadcastState() {
+  const payload = {
+    selectedMap: state.selectedMap,
+    roundActive: state.roundActive,
+    timer: state.timer,
+    bombPlanted: state.bombPlanted,
+    bombSite: state.bombSite,
+    players: Object.values(state.players).map(normalizePlayer),
+    scoreboard: Object.entries(state.scoreboard).map(([id, value]) => ({
+      id,
+      username: state.players[id]?.username || 'Player',
+      kills: value.kills || 0,
+      deaths: value.deaths || 0,
+    })),
+  };
+  io.emit('state', payload);
+}
+
+function getPlayerScore(id) {
+  if (!state.scoreboard[id]) {
+    state.scoreboard[id] = { kills: 0, deaths: 0 };
+  }
+  return state.scoreboard[id];
+}
+
+function resetRound() {
+  state.roundActive = true;
+  state.timer = 90;
+  state.bombPlanted = false;
+  state.bombSite = null;
+
+  Object.values(state.players).forEach((player) => {
+    const spawn = getMapData().spawn;
+    player.x = spawn.x + (Math.random() - 0.5) * 4;
+    player.y = 1.7;
+    player.z = spawn.z + (Math.random() - 0.5) * 4;
+    player.health = 100;
+    player.alive = true;
+    player.site = Math.random() > 0.5 ? 'A' : 'B';
+    player.money = 800;
+    player.weapon = 'deagle';
+  });
+
+  broadcastState();
+}
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, map: state.selectedMap, players: Object.keys(state.players).length });
+});
+
+io.on('connection', (socket) => {
+  const spawn = getMapData().spawn;
+  const player = {
+    id: socket.id,
+    username: `Player-${Math.floor(Math.random() * 900 + 100)}`,
+    x: spawn.x,
+    y: 1.7,
+    z: spawn.z,
+    yaw: Math.PI,
+    pitch: 0,
+    health: 100,
+    crouch: false,
+    sprint: false,
+    site: 'A',
+    alive: true,
+    kills: 0,
+    deaths: 0,
+    money: 800,
+    weapon: 'deagle',
+  };
+
+  state.players[socket.id] = player;
+  getPlayerScore(socket.id);
+
+  socket.emit('init', {
+    id: socket.id,
+    selectedMap: state.selectedMap,
+    timer: state.timer,
+    roundActive: state.roundActive,
+    bombPlanted: state.bombPlanted,
+    bombSite: state.bombSite,
+    scoreboard: state.scoreboard,
+  });
+
+  broadcastState();
+
+  socket.on('player:update', (data) => {
+    const current = state.players[socket.id];
+    if (!current) return;
+
+    current.x = typeof data.x === 'number' ? data.x : current.x;
+    current.y = typeof data.y === 'number' ? data.y : current.y;
+    current.z = typeof data.z === 'number' ? data.z : current.z;
+    current.yaw = typeof data.yaw === 'number' ? data.yaw : current.yaw;
+    current.pitch = typeof data.pitch === 'number' ? data.pitch : current.pitch;
+    current.crouch = !!data.crouch;
+    current.sprint = !!data.sprint;
+    current.health = typeof data.health === 'number' ? data.health : current.health;
+    current.alive = !!data.alive;
+    current.site = data.site || current.site;
+    current.weapon = data.weapon || current.weapon;
+    current.money = typeof data.money === 'number' ? data.money : current.money;
+  });
+
+  socket.on('map:change', (mapName) => {
+    if (!maps[mapName]) return;
+    state.selectedMap = mapName;
+    state.bombPlanted = false;
+    state.bombSite = null;
+    state.timer = 90;
+    state.roundActive = true;
+    resetRound();
+    io.emit('chat', { message: `Map changed to ${maps[mapName].name}` });
+    broadcastState();
+  });
+
+  socket.on('startMatch', () => {
+    resetRound();
+  });
+
+  socket.on('action:plant', () => {
+    const player = state.players[socket.id];
+    if (!player || !player.alive || state.bombPlanted) return;
+
+    const map = maps[state.selectedMap];
+    const nearest = Object.entries(map.bombSites).find(([_, site]) => {
+      const dx = player.x - site.x;
+      const dz = player.z - site.z;
+      return Math.hypot(dx, dz) < 3;
+    });
+
+    if (nearest) {
+      state.bombPlanted = true;
+      state.bombSite = nearest[0];
+      io.emit('chat', { message: `Bomb planted at ${nearest[0]}` });
+      broadcastState();
+    }
+  });
+
+  socket.on('grenade:throw', (type) => {
+    if (!['smoke', 'flash', 'molotov'].includes(type)) return;
+    io.emit('chat', { message: `${player.username} threw ${type}` });
+  });
+
+  socket.on('weapon:buy', (weaponName) => {
+    const buyer = state.players[socket.id];
+    if (!buyer) return;
+
+    const weaponPrices = {
+      deagle: 700,
+      usp: 200,
+      m4a1: 2700,
+      ak47: 2700,
+      awp: 4750,
+    };
+
+    const price = weaponPrices[weaponName] || 0;
+    if (buyer.money >= price) {
+      buyer.money -= price;
+      buyer.weapon = weaponName;
+      io.emit('chat', { message: `${buyer.username} bought ${weaponName}` });
+      broadcastState();
+    }
+  });
+
+  socket.on('player:kill', (targetId) => {
+    const attacker = state.players[socket.id];
+    const target = state.players[targetId];
+    if (!attacker || !target) return;
+
+    const score = getPlayerScore(socket.id);
+    const targetScore = getPlayerScore(targetId);
+    score.kills = (score.kills || 0) + 1;
+    targetScore.deaths = (targetScore.deaths || 0) + 1;
+    target.alive = false;
+    target.health = 0;
+    io.emit('chat', { message: `${attacker.username} eliminated ${target.username}` });
+    broadcastState();
+  });
+
+  socket.on('disconnect', () => {
+    delete state.players[socket.id];
+    broadcastState();
+  });
+});
+
+setInterval(() => {
+  if (state.roundActive) {
+    state.timer = Math.max(0, state.timer - 0.1);
+    if (state.timer <= 0) {
+      state.roundActive = false;
+      io.emit('chat', { message: 'Round finished.' });
+    }
+  }
+
+  broadcastState();
+}, 100);
+
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
