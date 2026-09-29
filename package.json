@@ -1,0 +1,13 @@
+{
+  "name": "cs2-style-3d-prototype",
+  "version": "1.0.0",
+  "description": "CS2-style 3D FPS prototype with local multiplayer server/client flow",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.8.1"
+  }
+}

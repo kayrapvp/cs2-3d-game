@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CS2 Style 3D Prototype</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="menu" class="menu visible">
+      <div class="panel">
+        <h1>CS2 STYLE 3D</h1>
+        <p class="subtitle">Competitive Prototype</p>
+
+        <div class="row">
+          <button class="map-btn active" data-map="dust2">Dust2</button>
+          <button class="map-btn" data-map="mirage">Mirage</button>
+        </div>
+
+        <div class="row small">
+          <button class="site-btn active" data-site="A">Site A</button>
+          <button class="site-btn" data-site="B">Site B</button>
+        </div>
+
+        <ul class="controls">
+          <li>W / A / S / D = Move</li>
+          <li>Shift = Sprint</li>
+          <li>Ctrl = Crouch</li>
+          <li>Space = Jump / Bhop</li>
+          <li>E = Plant Bomb</li>
+          <li>Mouse = Look</li>
+        </ul>
+
+        <button id="startBtn" class="primary">Start Match</button>
+      </div>
+    </div>
+
+    <div id="hud" class="hud hidden">
+      <div id="health" class="health">100 HP</div>
+      <div id="weapon" class="weapon">Deagle</div>
+      <div id="ammo" class="ammo">30 / 90</div>
+      <div id="round" class="round">Round 1</div>
+      <div id="timer" class="timer">01:30</div>
+      <div id="site" class="site">Site A</div>
+      <div id="message" class="message">Waiting for match</div>
+      <div id="crosshair" class="crosshair"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="game.js"></script>
+  </body>
+</html>
