@@ -6,27 +6,26 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-
 const PORT = process.env.PORT || 3000;
 
 const maps = {
   dust2: {
     name: 'Dust2',
-    bombSites: {
-      A: { x: -12, z: -12 },
-      B: { x: 12, z: 12 },
-    },
-    spawn: { x: 0, z: 12 },
-    color: 0x7da6c7,
+    bombSites: { A: { x: -12, z: -12 }, B: { x: 12, z: 12 } },
+    spawn: { x: 0, z: 14 },
+    color: 0x7aa7c5,
   },
   mirage: {
     name: 'Mirage',
-    bombSites: {
-      A: { x: -14, z: -10 },
-      B: { x: 14, z: 10 },
-    },
-    spawn: { x: 0, z: 14 },
-    color: 0x7a8e6e,
+    bombSites: { A: { x: -14, z: -10 }, B: { x: 14, z: 10 } },
+    spawn: { x: 0, z: 16 },
+    color: 0x738d60,
+  },
+  nuke: {
+    name: 'Nuke',
+    bombSites: { A: { x: -10, z: -14 }, B: { x: 10, z: 12 } },
+    spawn: { x: 0, z: 18 },
+    color: 0x858585,
   },
 };
 
@@ -37,10 +36,32 @@ const state = {
   bombPlanted: false,
   bombSite: null,
   players: {},
+  scoreboard: {},
 };
 
 function getMapData() {
   return maps[state.selectedMap] || maps.dust2;
+}
+
+function normalizePlayer(player) {
+  return {
+    id: player.id,
+    username: player.username,
+    x: player.x,
+    y: player.y,
+    z: player.z,
+    yaw: player.yaw,
+    pitch: player.pitch,
+    health: player.health,
+    crouch: player.crouch,
+    sprint: player.sprint,
+    site: player.site,
+    alive: player.alive,
+    kills: player.kills || 0,
+    deaths: player.deaths || 0,
+    money: player.money || 800,
+    weapon: player.weapon || 'deagle',
+  };
 }
 
 function broadcastState() {
@@ -50,23 +71,17 @@ function broadcastState() {
     timer: state.timer,
     bombPlanted: state.bombPlanted,
     bombSite: state.bombSite,
-    players: Object.values(state.players).map((player) => ({
-      id: player.id,
-      x: player.x,
-      y: player.y,
-      z: player.z,
-      yaw: player.yaw,
-      pitch: player.pitch,
-      health: player.health,
-      crouch: player.crouch,
-      sprint: player.sprint,
-      site: player.site,
-      alive: player.alive,
-      username: player.username,
-    })),
+    players: Object.values(state.players).map(normalizePlayer),
+    scoreboard: Object.entries(state.scoreboard).map(([id, value]) => ({ id, kills: value.kills || 0, deaths: value.deaths || 0 })),
   };
-
   io.emit('state', payload);
+}
+
+function getPlayerScore(id) {
+  if (!state.scoreboard[id]) {
+    state.scoreboard[id] = { kills: 0, deaths: 0 };
+  }
+  return state.scoreboard[id];
 }
 
 function resetRound() {
@@ -83,6 +98,8 @@ function resetRound() {
     player.health = 100;
     player.alive = true;
     player.site = Math.random() > 0.5 ? 'A' : 'B';
+    player.money = 800;
+    player.weapon = 'deagle';
   });
 
   broadcastState();
@@ -96,7 +113,6 @@ app.get('/health', (_req, res) => {
 
 io.on('connection', (socket) => {
   const spawn = getMapData().spawn;
-
   const player = {
     id: socket.id,
     username: `Player-${Math.floor(Math.random() * 900 + 100)}`,
@@ -110,9 +126,14 @@ io.on('connection', (socket) => {
     sprint: false,
     site: 'A',
     alive: true,
+    kills: 0,
+    deaths: 0,
+    money: 800,
+    weapon: 'deagle',
   };
 
   state.players[socket.id] = player;
+  getPlayerScore(socket.id);
   socket.emit('init', {
     id: socket.id,
     selectedMap: state.selectedMap,
@@ -120,6 +141,7 @@ io.on('connection', (socket) => {
     roundActive: state.roundActive,
     bombPlanted: state.bombPlanted,
     bombSite: state.bombSite,
+    scoreboard: state.scoreboard,
   });
   broadcastState();
 
@@ -137,6 +159,8 @@ io.on('connection', (socket) => {
     current.health = typeof data.health === 'number' ? data.health : current.health;
     current.alive = !!data.alive;
     current.site = data.site || current.site;
+    current.weapon = data.weapon || current.weapon;
+    current.money = typeof data.money === 'number' ? data.money : current.money;
   });
 
   socket.on('map:change', (mapName) => {
@@ -159,19 +183,60 @@ io.on('connection', (socket) => {
     const player = state.players[socket.id];
     if (!player || !player.alive || state.bombPlanted) return;
 
-    const bombSites = maps[state.selectedMap].bombSites;
-    const nearestSite = Object.entries(bombSites).find(([siteName, site]) => {
+    const map = maps[state.selectedMap];
+    const nearest = Object.entries(map.bombSites).find(([siteName, site]) => {
       const dx = player.x - site.x;
       const dz = player.z - site.z;
       return Math.hypot(dx, dz) < 3;
     });
 
-    if (nearestSite) {
+    if (nearest) {
       state.bombPlanted = true;
-      state.bombSite = nearestSite[0];
-      io.emit('chat', { message: `Bomb planted at ${nearestSite[0]}` });
+      state.bombSite = nearest[0];
+      io.emit('chat', { message: `Bomb planted at ${nearest[0]}` });
       broadcastState();
     }
+  });
+
+  socket.on('grenade:throw', (type) => {
+    if (!['smoke', 'flash', 'molotov'].includes(type)) return;
+    io.emit('chat', { message: `${player.username} threw ${type}` });
+  });
+
+  socket.on('weapon:buy', (weaponName) => {
+    const buyer = state.players[socket.id];
+    if (!buyer) return;
+
+    const weaponPrices = {
+      deagle: 700,
+      usp: 200,
+      m4a1: 2700,
+      ak47: 2700,
+      awp: 4750,
+    };
+
+    const price = weaponPrices[weaponName] || 0;
+    if (buyer.money >= price) {
+      buyer.money -= price;
+      buyer.weapon = weaponName;
+      io.emit('chat', { message: `${buyer.username} bought ${weaponName}` });
+      broadcastState();
+    }
+  });
+
+  socket.on('player:kill', (targetId) => {
+    const attacker = state.players[socket.id];
+    const target = state.players[targetId];
+    if (!attacker || !target) return;
+
+    const score = getPlayerScore(socket.id);
+    const targetScore = getPlayerScore(targetId);
+    score.kills = (score.kills || 0) + 1;
+    targetScore.deaths = (targetScore.deaths || 0) + 1;
+    target.alive = false;
+    target.health = 0;
+    io.emit('chat', { message: `${attacker.username} eliminated ${target.username}` });
+    broadcastState();
   });
 
   socket.on('disconnect', () => {
@@ -188,7 +253,6 @@ setInterval(() => {
       io.emit('chat', { message: 'Round finished.' });
     }
   }
-
   broadcastState();
 }, 100);
 

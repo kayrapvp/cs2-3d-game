@@ -10,25 +10,28 @@
     <div id="menu" class="menu visible">
       <div class="panel">
         <h1>CS2 STYLE 3D</h1>
-        <p class="subtitle">Competitive Prototype</p>
+        <p class="subtitle">Competitive FPS Prototype</p>
 
         <div class="row">
           <button class="map-btn active" data-map="dust2">Dust2</button>
           <button class="map-btn" data-map="mirage">Mirage</button>
+          <button class="map-btn" data-map="nuke">Nuke</button>
         </div>
 
         <div class="row small">
-          <button class="site-btn active" data-site="A">Site A</button>
-          <button class="site-btn" data-site="B">Site B</button>
+          <button class="team-btn active" data-team="A">Attack A</button>
+          <button class="team-btn" data-team="B">Attack B</button>
         </div>
 
         <ul class="controls">
-          <li>W / A / S / D = Move</li>
+          <li>W A S D = Move</li>
           <li>Shift = Sprint</li>
           <li>Ctrl = Crouch</li>
           <li>Space = Jump / Bhop</li>
           <li>E = Plant Bomb</li>
-          <li>Mouse = Look</li>
+          <li>Mouse = Aim</li>
+          <li>1/2/3/4 = Weapons</li>
+          <li>G / F / H = Grenades</li>
         </ul>
 
         <button id="startBtn" class="primary">Start Match</button>
@@ -38,12 +41,27 @@
     <div id="hud" class="hud hidden">
       <div id="health" class="health">100 HP</div>
       <div id="weapon" class="weapon">Deagle</div>
-      <div id="ammo" class="ammo">30 / 90</div>
+      <div id="ammo" class="ammo">7 / 35</div>
+      <div id="money" class="money">$800</div>
       <div id="round" class="round">Round 1</div>
       <div id="timer" class="timer">01:30</div>
       <div id="site" class="site">Site A</div>
       <div id="message" class="message">Waiting for match</div>
       <div id="crosshair" class="crosshair"></div>
+
+      <div id="scoreboard" class="scoreboard">
+        <div class="score-title">Scoreboard</div>
+        <div id="scoreList" class="score-list"></div>
+      </div>
+
+      <div id="buyMenu" class="buy-menu hidden">
+        <div class="buy-heading">Buy Menu</div>
+        <button class="buy-btn" data-weapon="deagle">Deagle - $700</button>
+        <button class="buy-btn" data-weapon="usp">USP - $200</button>
+        <button class="buy-btn" data-weapon="m4a1">M4A1 - $2700</button>
+        <button class="buy-btn" data-weapon="ak47">AK47 - $2700</button>
+        <button class="buy-btn" data-weapon="awp">AWP - $4750</button>
+      </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
